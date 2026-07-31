@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Implementation Request — Client Build Intake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAFAF8;
+    --panel:#FFFFFF;
+    --ink:#1B2A3A;
+    --ink-soft:#5C6B7A;
+    --line:#E1E2DC;
+    --line-soft:#EBEBE6;
+    --navy:#1B3A52;
+    --navy-dark:#122A3D;
+    --gold:#9C7A34;
+    --gold-soft:#F3ECDB;
+    --red:#A8412C;
+    --rail-bg:#FFFFFF;
+    --rail-line:#E7E7E1;
+    --rail-dim:#8A93A0;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:14.5px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Source Serif 4',serif; margin:0; font-weight:600;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* ---------- Top masthead ---------- */
+  .masthead{
+    background:var(--panel);
+    color:var(--ink);
+    padding:0 0 28px;
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .masthead-banner{
+    width:100%;
+    display:block;
+    max-height:190px;
+    object-fit:cover;
+  }
+  .masthead-text{padding:28px 44px 0;}
+  .masthead::after{
+    content:"";
+    position:absolute; left:44px; bottom:-1px; height:2px; width:64px;
+    background:var(--gold);
+  }
+  .masthead .eyebrow{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:11px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin-bottom:12px;
+  }
+  .masthead h1{font-size:30px; font-weight:600; letter-spacing:-.01em; color:var(--navy-dark); margin-top:22px;}
+  .masthead p{margin:10px 0 0; color:var(--ink-soft); font-size:14px; max-width:620px; line-height:1.6;}
+
+  /* ---------- Layout shell ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns:240px 1fr;
+    max-width:1200px;
+    margin:0 auto;
+    align-items:start;
+  }
+  @media (max-width:880px){
+    .shell{grid-template-columns:1fr;}
+    .stub{position:static !important; order:2; min-height:auto !important;}
+  }
+
+  /* ---------- Left rail / table of contents ---------- */
+  .stub{
+    background:var(--rail-bg);
+    color:var(--ink);
+    min-height:calc(100vh - 132px);
+    position:sticky;
+    top:0;
+    padding:30px 0 40px;
+    border-right:1px solid var(--rail-line);
+  }
+  .stub-title{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:10.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--rail-dim);
+    padding:0 26px 14px;
+    border-bottom:1px solid var(--rail-line);
+    margin-bottom:6px;
+  }
+  .stub-item{
+    display:flex;
+    align-items:flex-start;
+    gap:11px;
+    padding:11px 26px;
+    cursor:pointer;
+    border-left:2px solid transparent;
+    transition:background .15s, border-color .15s;
+  }
+  .stub-item:hover{background:#FAF8F2;}
+  .stub-item.active{background:#FBF7EC; border-left-color:var(--gold);}
+  .stub-check{
+    width:16px; height:16px; flex:0 0 16px;
+    border:1.3px solid #C9CDBE;
+    border-radius:50%;
+    margin-top:2px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; color:transparent;
+  }
+  .stub-item.done .stub-check{
+    background:var(--navy); border-color:var(--navy); color:#fff;
+  }
+  .stub-num{font-family:'Inter',sans-serif; font-weight:600; font-size:10px; letter-spacing:.08em; color:var(--rail-dim); display:block;}
+  .stub-label{font-family:'Source Serif 4',serif; font-size:13.5px; line-height:1.3; display:block; margin-top:2px; color:var(--ink-soft);}
+  .stub-item.active .stub-label{color:var(--navy-dark); font-weight:600;}
+  .stub-progress{
+    padding:18px 26px 0;
+    margin-top:10px;
+    border-top:1px solid var(--rail-line);
+  }
+  .stub-progress-bar{height:4px; background:var(--rail-line); border-radius:2px; overflow:hidden; margin-top:9px;}
+  .stub-progress-fill{height:100%; background:var(--gold); width:0%; transition:width .25s;}
+  .stub-progress-text{font-family:'Inter',sans-serif; font-size:11px; color:var(--rail-dim); margin-top:7px;}
+
+  /* ---------- Main content ---------- */
+  main{padding:38px 44px 90px; max-width:880px;}
+  .section{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:26px;
+    overflow:hidden;
+    scroll-margin-top:20px;
+  }
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    padding:20px 26px;
+    background:#2A3FCC;
+    border-bottom:1px solid var(--line);
+  }
+  .section-head .n{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:11.5px;
+    letter-spacing:.1em;
+    color:#C9D2FF;
+  }
+  .section-head h2{font-size:18px; letter-spacing:.005em; color:#FFFFFF;}
+  .section-note{
+    font-size:13px; color:var(--ink-soft); padding:14px 26px 0; margin:0; font-style:italic;
+  }
+  .section-body{padding:22px 26px 26px; display:flex; flex-direction:column; gap:18px;}
+
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field label{
+    font-size:13px; font-weight:600; color:var(--ink);
+    display:flex; align-items:baseline; gap:6px;
+  }
+  .field .hint{font-size:12px; color:var(--ink-soft); font-weight:400; margin-top:-2px;}
+  .req{color:var(--red); font-weight:700;}
+
+  input[type=text], input[type=email], input[type=tel], input[type=date], input[type=time], input[type=number], select, textarea{
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:#fff;
+    color:var(--ink);
+    width:100%;
+    max-width:440px;
+  }
+  textarea{max-width:100%; min-height:96px; resize:vertical; font-family:'Inter',sans-serif;}
+  input:focus, select:focus, textarea:focus{
+    outline:none; border-color:var(--navy); box-shadow:0 0 0 3px rgba(27,58,82,.10);
+  }
+  input:disabled, select:disabled, textarea:disabled{
+    background:#F5F5F2; color:#A7ADB3; cursor:not-allowed;
+  }
+  input[readonly]{background:#F8F7F3; color:var(--ink-soft);}
+
+  .row{display:flex; gap:18px; flex-wrap:wrap;}
+  .row .field{flex:1 1 200px;}
+
+  .checkgrid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+    gap:9px 20px;
+  }
+  .checkitem{
+    display:flex; align-items:flex-start; gap:9px;
+    font-size:13.5px;
+    padding:6px 0;
+  }
+  .checkitem input{width:16px; height:16px; margin-top:2px; flex:0 0 16px; accent-color:var(--navy);}
+  .checkitem label{font-weight:400; color:var(--ink); cursor:pointer;}
+
+  .summary-line{
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    color:var(--navy-dark);
+    background:#F4F7F8;
+    border:1px solid #DCE4E7;
+    border-radius:var(--radius);
+    padding:9px 12px;
+    min-height:18px;
+  }
+  .summary-line.empty{color:#A3A9AE; background:#F7F7F4; border-color:var(--line);}
+
+  .subhead{
+    font-family:'Inter',sans-serif;
+    font-size:12px;
+    font-weight:700;
+    color:var(--navy);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    margin:8px 0 -4px;
+    padding-top:12px;
+    border-top:1px solid var(--line-soft);
+  }
+  .subhead:first-child{border-top:none; padding-top:0;}
+
+  .callout{
+    font-size:12.5px;
+    background:var(--gold-soft);
+    border-left:3px solid var(--gold);
+    padding:9px 13px;
+    border-radius:0 var(--radius) var(--radius) 0;
+    color:#6B5220;
+  }
+
+  .autofill-box{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px;
+    background:#F8F7F3;
+    border:1px solid var(--line-soft);
+    border-radius:var(--radius);
+    padding:16px;
+  }
+  .autofill-box .field label{font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; font-weight:600;}
+  .autofill-box input{font-family:'IBM Plex Mono',monospace; font-size:12.5px;}
+
+  .star{color:var(--gold); font-weight:700;}
+
+  /* ---------- Footer / actions ---------- */
+  .actions{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:center;
+  }
+  button{
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    font-weight:600;
+    padding:12px 22px;
+    border-radius:var(--radius);
+    border:1px solid var(--navy);
+    background:var(--navy);
+    color:#fff;
+    cursor:pointer;
+    transition:background .15s, border-color .15s;
+  }
+  button.secondary{background:#fff; color:var(--ink); border-color:var(--line);}
+  button.secondary:hover{border-color:var(--navy); color:var(--navy-dark);}
+  button.primary{background:var(--navy); border-color:var(--navy);}
+  button.primary:hover{background:var(--navy-dark);}
+  .actions .note{font-size:12px; color:var(--ink-soft); flex:1 1 100%;}
+
+  #toast{
+    position:fixed; bottom:26px; right:26px;
+    background:var(--navy-dark); color:#fff;
+    padding:13px 20px; border-radius:var(--radius);
+    font-size:13px; font-family:'Inter',sans-serif; font-weight:600;
+    opacity:0; transform:translateY(8px);
+    transition:opacity .2s, transform .2s;
+    pointer-events:none;
+    z-index:50;
+  }
+  #toast.show{opacity:1; transform:translateY(0);}
+
+  #summaryModal{
+    display:none;
+    position:fixed; inset:0; background:rgba(27,42,58,.55);
+    align-items:center; justify-content:center; z-index:60; padding:24px;
+  }
+  #summaryModal.show{display:flex;}
+  .modal-panel{
+    background:#fff; border-radius:var(--radius); max-width:720px; width:100%;
+    max-height:80vh; overflow:auto; padding:0;
+    box-shadow:0 18px 48px rgba(27,42,58,.22);
+  }
+  .modal-head{padding:20px 26px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;}
+  .modal-head h3{font-size:16.5px; color:var(--navy-dark);}
+  .modal-head button{padding:7px 14px; font-size:12px;}
+  .modal-body{padding:22px 26px;}
+  .modal-body pre{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; white-space:pre-wrap;
+    background:#F8F7F3; padding:16px; border-radius:var(--radius); border:1px solid var(--line-soft);
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <img class="masthead-banner" src="data:image/jpeg;base64,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" alt="REPAY — Realtime Electronic Payments">
+  <div class="masthead-text">
+    <div class="eyebrow">Sales Engineering</div>
+    <h1>Client Implementation Intake</h1>
+    <p>Please complete the sections below so our Sales Engineering team can scope and configure your build accurately. Fields that depend on an earlier selection will unlock automatically as you go.</p>
+  </div>
+</div>
+
+<div class="shell">
+
+  <nav class="stub" id="stub">
+    <div class="stub-title">Sections</div>
+    <div id="stubList"></div>
+    <div class="stub-progress">
+      <div class="stub-progress-text" id="progressText">0 of 10 sections started</div>
+      <div class="stub-progress-bar"><div class="stub-progress-fill" id="progressFill"></div></div>
+    </div>
+  </nav>
+
+  <main>
+    <form id="intakeForm" autocomplete="off">
+
+      <!-- SECTION 1 -->
+      <section class="section" id="sec-1" data-section="1">
+        <div class="section-head"><span class="n">01</span><h2>Client Information</h2></div>
+        <div class="section-body">
+          <div class="row">
+            <div class="field">
+              <label>Client Name <span class="req">*</span></label>
+              <input type="text" id="clientName" data-track>
+            </div>
+            <div class="field">
+              <label>Vertical <span class="req">*</span></label>
+              <select id="vertical" data-track>
+                <option value="">Select…</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Client Contact <span class="req">*</span></label>
+              <span class="hint">Primary merchant contact name.</span>
+              <input type="text" id="clientContact" data-track>
+            </div>
+            <div class="field">
+              <label>Client Phone <span class="req">*</span></label>
+              <input type="tel" id="clientPhone" placeholder="(555) 555-5555" data-track>
+            </div>
+            <div class="field">
+              <label>Client Email <span class="req">*</span></label>
+              <input type="email" id="clientEmail" data-track>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Desired Go-Live Date <span class="req">*</span></label>
+              <input type="date" id="goLiveDate" data-track>
+            </div>
+            <div class="field">
+              <label>Sales Executive <span class="req">*</span></label>
+              <span class="hint">Cascading filter — cross-check auto-filled roles in Section 2 once a Partner is chosen.</span>
+              <select id="salesExec" data-track><option value="">Select…</option></select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>CSM <span class="req">*</span> <span class="hint">Optional</span></label>
+              <select id="csm" data-track><option value="">Select…</option></select>
+            </div>
+            <div class="field">
+              <label>Pod <span class="req">*</span> <span class="hint">Optional</span></label>
+              <select id="pod" data-track><option value="">Select…</option></select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Sales Engineer(s) on call / demos <span class="req">*</span></label>
+            <span class="hint">Which SE(s) participated in the sale/demos.</span>
+            <input type="text" id="seOnCall" data-track>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2 -->
+      <section class="section" id="sec-2" data-section="2">
+        <div class="section-head"><span class="n">02</span><h2>Partner &amp; Merchant Core System</h2></div>
+        <p class="section-note">Selecting a partner auto-fills the Partner Code and looks up the roles below from the Partner Directory.</p>
+        <div class="section-body">
+          <div class="field">
+            <label>Partner or Core System <span class="req">*</span></label>
+            <span class="hint">Choose a directory partner, "Proprietary", "None (Vterminal / public checkout)", or "NEW Partner".</span>
+            <select id="partner" data-track><option value="">Select…</option></select>
+          </div>
+          <div class="field" id="wrap-newPartnerName" style="display:none;">
+            <label>New Partner Name <span class="req">*</span> <span class="hint">(only if "NEW Partner" selected)</span></label>
+            <input type="text" id="newPartnerName" data-track>
+          </div>
+          <div class="field" id="wrap-pciLevel" style="display:none;">
+            <label>PCI Level <span class="req">*</span> <span class="hint">Required when "Proprietary" is selected above.</span></label>
+            <select id="pciLevel" data-track><option value="">Select…</option></select>
+          </div>
+
+          <div class="subhead">Auto-filled from Partner Directory (read-only)</div>
+          <div class="autofill-box">
+            <div class="field"><label>Partner Code</label><input type="text" id="partnerCode" readonly></div>
+            <div class="field"><label>Sales Executive (auto)</label><input type="text" id="seAuto" readonly></div>
+            <div class="field"><label>CSM (auto)</label><input type="text" id="csmAuto" readonly></div>
+            <div class="field"><label>SE Manager (auto)</label><input type="text" id="seManagerAuto" readonly></div>
+            <div class="field"><label>Pod (auto)</label><input type="text" id="podAuto" readonly></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3 -->
+      <section class="section" id="sec-3" data-section="3">
+        <div class="section-head"><span class="n">03</span><h2>Main Payment Platform</h2></div>
+        <p class="section-note">Select all primary platform(s) for this build.</p>
+        <div class="section-body">
+          <div class="checkgrid" data-group="paymentPlatform">
+            <div class="checkitem"><input type="checkbox" value="REPAY Gateway & Channels" id="pp0"><label for="pp0">REPAY Gateway &amp; Channels</label></div>
+            <div class="checkitem"><input type="checkbox" value="RAB (ACH)" id="pp1"><label for="pp1">RAB (ACH)</label></div>
+            <div class="checkitem"><input type="checkbox" value="LIFT" id="pp2"><label for="pp2">LIFT</label></div>
+            <div class="checkitem"><input type="checkbox" value="PAYRAZR" id="pp3"><label for="pp3">PAYRAZR</label></div>
+            <div class="checkitem"><input type="checkbox" value="PayrazrRX" id="pp4"><label for="pp4">PayrazrRX</label></div>
+            <div class="checkitem"><input type="checkbox" value="Payix – Existing Merchants only" id="pp5"><label for="pp5">Payix – Existing Merchants only</label></div>
+            <div class="checkitem"><input type="checkbox" value="CareView V3x" id="pp6"><label for="pp6">CareView V3x</label></div>
+            <div class="checkitem"><input type="checkbox" value="CareView V4" id="pp7"><label for="pp7">CareView V4</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-paymentPlatform">None selected</div>
+          </div>
+          <div class="field">
+            <label>Number of Locations</label>
+            <input type="number" min="0" id="numLocations" style="max-width:160px" data-track>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 4 -->
+      <section class="section" id="sec-4" data-section="4">
+        <div class="section-head"><span class="n">04</span><h2>Terminals</h2></div>
+        <div class="section-body">
+          <div class="row">
+            <div class="field">
+              <label>Does the client need a terminal?</label>
+              <select id="terminalNeed" data-track><option value="">Select…</option></select>
+            </div>
+            <div class="field">
+              <label>How many terminals?</label>
+              <span class="hint">Enabled only when need ≠ "No".</span>
+              <input type="number" min="0" id="terminalCount" disabled data-track>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 5 -->
+      <section class="section" id="sec-5" data-section="5">
+        <div class="section-head"><span class="n">05</span><h2>Instant Funding</h2></div>
+        <div class="section-body">
+          <div class="checkgrid" data-group="instantFunding">
+            <div class="checkitem"><input type="checkbox" value="Card Contract 1.0" id="if0"><label for="if0">Card Contract 1.0</label></div>
+            <div class="checkitem"><input type="checkbox" value="Card Contract 2.0 – PTSA (controlled deployment)" id="if1"><label for="if1">Card Contract 2.0 – PTSA (controlled deployment)</label></div>
+            <div class="checkitem"><input type="checkbox" value="ACH Credits" id="if2"><label for="if2">ACH Credits</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-instantFunding">None selected</div>
+          </div>
+          <div class="field">
+            <label>Instant Funding Gateways</label>
+            <select id="instantFundingGateway" data-track><option value="">Select…</option></select>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 6 -->
+      <section class="section" id="sec-6" data-section="6">
+        <div class="section-head"><span class="n">06</span><h2>ACH Debit Processing</h2></div>
+        <p class="section-note">CFEE = convenience fee. When "REPAY keeps" or "Merchant keeps" is chosen, the associated $ field below unlocks.</p>
+        <div class="section-body">
+          <div class="checkgrid" data-group="achDebit">
+            <div class="checkitem"><input type="checkbox" value="No consumer fee (TRAD)" id="ach0"><label for="ach0">No consumer fee (TRAD)</label></div>
+            <div class="checkitem"><input type="checkbox" value="Merchant keeps (Merchant Absorb)" id="ach1"><label for="ach1">Merchant keeps (Merchant Absorb)</label></div>
+            <div class="checkitem"><input type="checkbox" value="REPAY keeps (Convenience Fee)" id="ach2"><label for="ach2">REPAY keeps (Convenience Fee)</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-achDebit">None selected</div>
+          </div>
+          <div class="field">
+            <label>ACH Convenience / Absorb Fee ($)</label>
+            <span class="hint">Enabled only if ACH Debit Processing includes a "Merchant keeps" option above.</span>
+            <input type="text" id="achFee" placeholder="e.g. $3.95 or 2.9% + $0.30" style="max-width:220px" disabled data-track>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Batch time - ACH</label>
+              <span class="hint">HH:MM. ACH typically settles 7:00pm &amp; 10:29pm EST unless noted.</span>
+              <input type="time" id="achBatchTime" style="max-width:160px" data-track>
+            </div>
+            <div class="field">
+              <label>ACH Settlement Window</label>
+              <select id="achSettlementWindow" data-track><option value="">Select…</option></select>
+            </div>
+          </div>
+          <div class="subhead">NACHA Compliance — select all that apply</div>
+          <div class="checkgrid" data-group="nacha">
+            <div class="checkitem"><input type="checkbox" value="REPAY Channels" id="na0"><label for="na0">REPAY Channels</label></div>
+            <div class="checkitem"><input type="checkbox" value="Proprietary Software" id="na1"><label for="na1">Proprietary Software</label></div>
+            <div class="checkitem"><input type="checkbox" value="REPAY Integrated Software" id="na2"><label for="na2">REPAY Integrated Software</label></div>
+            <div class="checkitem"><input type="checkbox" value="Physically Stored" id="na3"><label for="na3">Physically Stored</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-nacha">None selected</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 7 -->
+      <section class="section" id="sec-7" data-section="7">
+        <div class="section-head"><span class="n">07</span><h2>Card Payment Services</h2></div>
+        <p class="section-note">CFEE = convenience fee. When "REPAY keeps" or "Merchant keeps" is chosen, the associated $ field below unlocks.</p>
+        <div class="section-body">
+          <div class="subhead">Card Processing — select all that apply</div>
+          <div class="checkgrid" data-group="cardProcessing">
+            <div class="checkitem"><input type="checkbox" value="No consumer fee (TRAD)" id="cp0"><label for="cp0">No consumer fee (TRAD)</label></div>
+            <div class="checkitem"><input type="checkbox" value="Merchant keeps (Merchant Absorb)" id="cp1"><label for="cp1">Merchant keeps (Merchant Absorb)</label></div>
+            <div class="checkitem"><input type="checkbox" value="REPAY keeps (Convenience Fee)" id="cp2"><label for="cp2">REPAY keeps (Convenience Fee)</label></div>
+            <div class="checkitem"><input type="checkbox" value="REPAY keeps - Tiered (Convenience Fee)" id="cp3"><label for="cp3">REPAY keeps - Tiered (Convenience Fee)</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-cardProcessing">None selected</div>
+          </div>
+          <div class="field">
+            <label>Card Convenience / Absorb Fee ($)</label>
+            <span class="hint">Enabled only if Card Processing includes a "keeps" option.</span>
+            <input type="number" step="0.01" min="0" id="cardFee" placeholder="e.g. 3.95" style="max-width:160px" disabled data-track>
+          </div>
+
+          <div class="subhead">Card Processing (Merchant Pass / Split Fee) — select all that apply</div>
+          <div class="checkgrid" data-group="splitFee">
+            <div class="checkitem"><input type="checkbox" value="No consumer fee" id="sf0"><label for="sf0">No consumer fee</label></div>
+            <div class="checkitem"><input type="checkbox" value="REPAY keeps" id="sf1"><label for="sf1">REPAY keeps</label></div>
+            <div class="checkitem"><input type="checkbox" value="Merchant keeps" id="sf2"><label for="sf2">Merchant keeps</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-splitFee">None selected</div>
+          </div>
+          <div class="field">
+            <label>Split-Fee Amount ($)</label>
+            <span class="hint">Enabled only if the Split Fee field includes a "keeps" option.</span>
+            <input type="number" step="0.01" min="0" id="splitFeeAmount" placeholder="e.g. 1.50" style="max-width:160px" disabled data-track>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Apple Pay &amp; Google Pay</label>
+              <span class="hint">"No" requires tokenization for all cards.</span>
+              <select id="applePayGooglePay" data-track><option value="">Select…</option></select>
+            </div>
+            <div class="field">
+              <label>Batch time - Card</label>
+              <span class="hint">Leave empty for load balancing.</span>
+              <input type="time" id="cardBatchTime" style="max-width:160px" data-track>
+            </div>
+          </div>
+
+          <div class="subhead">Processing Flags — select all that apply</div>
+          <div class="checkgrid" data-group="processingFlags">
+            <div class="checkitem"><input type="checkbox" value="Next Day Funding – CARD (must be approved)" id="pf0"><label for="pf0">Next Day Funding – CARD (must be approved)</label></div>
+            <div class="checkitem"><input type="checkbox" value="Flat rate passing" id="pf1"><label for="pf1">Flat rate passing</label></div>
+            <div class="checkitem"><input type="checkbox" value="Dues & Assessments & Card Brand Fees" id="pf2"><label for="pf2">Dues &amp; Assessments &amp; Card Brand Fees</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-processingFlags">None selected</div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Commercial Card</label>
+              <select id="commercialCard" data-track><option value="">Select…</option></select>
+            </div>
+            <div class="field">
+              <label>MID(S) Summary</label>
+              <span class="hint">Limited to Debit.</span>
+              <input type="text" id="midSummary" data-track>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 8 -->
+      <section class="section" id="sec-8" data-section="8">
+        <div class="section-head"><span class="n">08</span><h2>Other Payment Services</h2></div>
+        <div class="section-body">
+          <div class="row">
+            <div class="field">
+              <label>PayPal</label>
+              <select id="paypal" data-track><option value="">Select…</option></select>
+            </div>
+            <div class="field">
+              <label>PayPal Service Fee ($)</label>
+              <input type="number" step="0.01" min="0" id="paypalFee" placeholder="e.g. 2.50" disabled data-track>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Venmo</label>
+              <select id="venmo" data-track><option value="">Select…</option></select>
+            </div>
+            <div class="field">
+              <label>Venmo Service Fee ($)</label>
+              <input type="number" step="0.01" min="0" id="venmoFee" placeholder="e.g. 2.50" disabled data-track>
+            </div>
+          </div>
+          <div class="subhead">eCash — select all that apply</div>
+          <div class="checkgrid" data-group="ecash">
+            <div class="checkitem"><input type="checkbox" value="API Channels Only" id="ec0"><label for="ec0">API Channels Only</label></div>
+            <div class="checkitem"><input type="checkbox" value="Pay-By-Link" id="ec1"><label for="ec1">Pay-By-Link</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-ecash">None selected</div>
+          </div>
+          <div class="field">
+            <label>Active Safe</label>
+            <select id="activeSafe" data-track><option value="">Select…</option></select>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 9 -->
+      <section class="section" id="sec-9" data-section="9">
+        <div class="section-head"><span class="n">09</span><h2>Requested Technology &amp; Channels</h2></div>
+        <p class="section-note"><span class="star">✱</span> Mark options that require BLF or Account Data.  API options require engagement with SE to define requirements.</p>
+        <div class="section-body">
+          <div class="subhead">Products — select all that apply</div>
+          <div class="checkgrid" data-group="products">
+            <div class="checkitem"><input type="checkbox" value="Channels API / Agent Portal" id="pr0"><label for="pr0">Channels API / Agent Portal</label></div>
+            <div class="checkitem"><input type="checkbox" value="Customer Portal ✱" id="pr1"><label for="pr1">Customer Portal ✱</label></div>
+            <div class="checkitem"><input type="checkbox" value="IVR ✱" id="pr2"><label for="pr2">IVR ✱</label></div>
+            <div class="checkitem"><input type="checkbox" value="Text to Pay ✱ (SMS carrier approval)" id="pr3"><label for="pr3">Text to Pay ✱ (SMS carrier approval)</label></div>
+            <div class="checkitem"><input type="checkbox" value="Pre-checkout / V-Terminal" id="pr4"><label for="pr4">Pre-checkout / V-Terminal</label></div>
+            <div class="checkitem"><input type="checkbox" value="Gateway API (existing merchants only)" id="pr5"><label for="pr5">Gateway API (existing merchants only)</label></div>
+            <div class="checkitem"><input type="checkbox" value="Payrazr Portal" id="pr6"><label for="pr6">Payrazr Portal</label></div>
+            <div class="checkitem"><input type="checkbox" value="Mobile App" id="pr7"><label for="pr7">Mobile App</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-products">None selected</div>
+          </div>
+
+          <div class="subhead">Controlled Deployment Products — select all that apply</div>
+          <p class="callout">Requires engagement with SE. <span class="star">✱</span> = BLF or Account Data needed.</p>
+          <div class="checkgrid" data-group="controlledDeployment">
+            <div class="checkitem"><input type="checkbox" value="REPAY Voice ✱" id="cd0"><label for="cd0">REPAY Voice ✱</label></div>
+            <div class="checkitem"><input type="checkbox" value="Dynamic Wallet ✱" id="cd1"><label for="cd1">Dynamic Wallet ✱</label></div>
+            <div class="checkitem"><input type="checkbox" value="Name Validation" id="cd2"><label for="cd2">Name Validation</label></div>
+          </div>
+          <div class="field">
+            <label>→ Selected (auto-summary)</label>
+            <div class="summary-line empty" id="sum-controlledDeployment">None selected</div>
+          </div>
+
+          <div class="field">
+            <label>Dashboard Options</label>
+            <select id="dashboardOptions" data-track><option value="">Select…</option></select>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 10 -->
+      <section class="section" id="sec-10" data-section="10">
+        <div class="section-head"><span class="n">10</span><h2>Notes for Sales Engineers</h2></div>
+        <div class="section-body">
+          <div class="field">
+            <label>SE Notes</label>
+            <span class="hint">Brief summary of the solution sold — client needs, solution overview, key goals. Do NOT paste full meeting transcripts.</span>
+            <textarea id="seNotes" data-track></textarea>
+          </div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button type="button" class="primary" id="btnSubmitEmail">Submit completed form via email</button>
+        <button type="button" class="secondary" id="btnSummary">Generate build summary</button>
+        <button type="button" class="secondary" id="btnJson">Download as JSON</button>
+        <button type="button" class="secondary" id="btnPrint">Print form</button>
+        <button type="button" class="secondary" id="btnReset">Clear all fields</button>
+        <p class="note">"Submit completed form via email" opens your default email app with a filled-in message addressed to sbell@repay.com — review it and hit send. For very long entries, also attach the JSON download so nothing gets cut off.</p>
+      </div>
+
+    </form>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<div id="summaryModal">
+  <div class="modal-panel">
+    <div class="modal-head">
+      <h3>Build Summary</h3>
+      <button type="button" class="secondary" id="closeSummary">Close</button>
+    </div>
+    <div class="modal-body">
+      <pre id="summaryText"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- Reference data (from Lists + Partner Directory tabs) ---------------- */
+const LISTS = {
+  vertical: ["Consumer Finance","Mortgage","ARM (Accounts Receivable Mgmt)","Auto","Healthcare","Other"],
+  pciLevel: ["Unknown","Level 4 (Handles full PAN)"],
+  salesExecutive: ["Patricia Duffek","Tom Coppola","Chris Gateas","John Koehn","James Price","James Price / Chris Gateas","Jeff Johnson","Ken Gurtner","Mike Kuhn"],
+  csm: ["Rudy Olvera","Bowden Evans","Linden Lovelace","Orlando Mosquera","Matt Yeats","Angela White"],
+  pod: ["None","Pod 10","Pod 11","Pod 2","Pod 3","Pod 4","Pod 4/2","Pod 5","Pod 7","Pod 9"],
+  instantFundingGateway: ["1 for all","1 per location"],
+  achSettlementWindow: ["5 day","3 day (higher pricing)"],
+  applePayGooglePay: ["Yes","No (Requires tokenization for all cards)","Unsure"],
+  dashboardOptions: ["Custom","Standard Dashboards - ACH Recon, ACH Return, Card Recon, Chargeback, Webhooks"],
+  terminalNeed: ["Yes - terminal only","No"],
+  yesNo: ["Yes","No"]
+};
+
+// Partner Directory: [Partner, Sales Executive, CSM, SE Manager, Pod, Partner Code]
+const PARTNER_DIRECTORY = [["Proprietary", "-", "-", "-", "None", "None"], ["AFS Dealers + DCS / DCL", "Patricia Duffek", null, "Tara Brown", "Pod 10", "AFS + DCS: 1018 (Legacy = 1092) / DCL = 1093"], ["AutoAction", "Patricia Duffek", null, "Tara Brown", "Pod 10", "5003"], ["Financial Software Systems (FSS)", "Tom Coppola", "Rudy Olvera", "Tara Brown", "Pod 10", "1032, 2020"], ["Paydit llc Payline Direct", "Patricia Duffek", null, "Tara Brown", "Pod 10", "1120, 1068"], ["Infinity - Repay / Epic LMS / Tekambi", "Patricia Duffek", "Bowden Evans", "Tara Brown", "Pod 10", "1002 (2024 = Legacy) / Epic = 1005"], ["TurnKey Lender", "Patricia Duffek", null, "Tara Brown", "Pod 10", "1072, 1055"], ["SparkLMS", "Patricia Duffek", "Bowden Evans", "Brian Tefft", "Pod 10", "Recruitment Phase (not signed)"], ["AutoDealer Pro", "Tom Coppola", "Linden Lovelace", "Tara Brown", "Pod 11", "1102"], ["AutoFaith Solutions, Inc.", "Tom Coppola", "Bowden Evans", "Tara Brown", "Pod 11", "1075"], ["AutoStar", "Tom Coppola", "Rudy Olvera", "Tara Brown", "Pod 11", "2003, 5004, 5014"], ["Cajun", "Tom Coppola", "Bowden Evans", "Tara Brown", "Pod 11", "1086"], ["ComSoft", "Tom Coppola", "Linden Lovelace", "Tara Brown", "Pod 11", "5008"], ["VBI Financial Services", "Tom Coppola", "Linden Lovelace", "Tara Brown", "Pod 11", "9170"], ["Megasys", "Tom Coppola", "Bowden Evans", "Brian Tefft", "Pod 11", "2016"], ["LendiSoft / Infinite Financial Solutions", "Tom Coppola", "Linden Lovelace", "Brian Tefft", "Pod 11", "1079, 9165"], ["ABCoA/DealPack", "Chris Gateas", "Orlando Mosquera", "Brian Tefft", "Pod 2", "2038"], ["Inovatec", "Chris Gateas", "Bowden Evans", "Brian Tefft", "Pod 2", "1208"], ["Anchor Pay LLC", "Chris Gateas", "Bowden Evans", "TBD", "Pod 2", "TBD"], ["Nortridge", "Chris Gateas", "Linden Lovelace", "Brian Tefft", "Pod 2", "2028"], ["QFUND", "Chris Gateas", "Rudy Olvera", "Brian Tefft", "Pod 2", "1015"], ["AutoMaster", "Chris Gateas", "Matt Yeats", "Tara Brown", "Pod 2", "1109"], ["Tasksuite", "John Koehn", "Angela White", "Brian Tefft", "Pod 3", "9178"], ["Allied Business Systems (ABS)", "John Koehn", "Angela White", "Brian Tefft", "Pod 3", "5001, 1100"], ["Answers, etc.", "John Koehn", "Angela White", "Brian Tefft", "Pod 3", "1025"], ["CSB", "John Koehn", "Angela White", "Brian Tefft", "Pod 3", "1016"], ["GOLDPoint", "John Koehn", "Bowden Evans", "Brian Tefft", "Pod 3", "1099"], ["Loan Tec", "John Koehn", "Angela White", "Brian Tefft", "Pod 3", "1023"], ["Alfa", "James Price", "Linden Lovelace", "Brian Tefft", "Pod 4", "Recruitment Phase (not signed)"], ["Shaw Systems Associates, LLC", "James Price", "Bowden Evans", "Brian Tefft", "Pod 4", "2014 (legacy)"], ["Defi Solutions", "James Price / Chris Gateas", "Linden Lovelace", "Brian Tefft", "Pod 4/2", "2005"], ["LoanPro / AutoPal - REPAY", "Jeff Johnson", "Linden Lovelace", "Brian Tefft", "Pod 5", "1030, 2023"], ["Credex", "Ken Gurtner", "Orlando Mosquera", "Tara Brown", "Pod 7", "1001"], ["ALMsys", "Ken Gurtner", "Orlando Mosquera", "Tara Brown", "Pod 7", "1037"], ["AutoMatrix", "Ken Gurtner", "Orlando Mosquera", "Tara Brown", "Pod 7", "2025, 2040"], ["Commsoft.net", "Ken Gurtner", "Orlando Mosquera", "Tara Brown", "Pod 7", "9175"], ["Frazer - Paymaxx", "Ken Gurtner", "Orlando Mosquera", "Tara Brown", "Pod 7", "1158 (5011 legacy code, defunct 06/2024)"], ["IntroXL", "Ken Gurtner", "Orlando Mosquera", "Tara Brown", "Pod 7", "1009; 1173"], ["Micro 21", "Ken Gurtner", "Orlando Mosquera", "Tara Brown", "Pod 7", "2011"], ["Reynolds & Reynolds", "Ken Gurtner", "Orlando Mosquera", "Tara Brown", "Pod 7", "Recruitment Phase (not signed)"], ["Totality LMS", "Ken Gurtner", "Orlando Mosquera", "Tara Brown", "Pod 7", "1129"], ["Alchemy Technologies", "Mike Kuhn", "Bowden Evans", "Brian Tefft", "Pod 9", "1058"], ["Catalyst", "Mike Kuhn", "Orlando Mosquera", "Brian Tefft", "Pod 9", "1131"], ["LP3 - Loan Plus 3 (CFS)", "Mike Kuhn", "Linden Lovelace", "Tara Brown", "Pod 9", "1088"], ["AFS (Advanced Financial Software)", "Mike Kuhn", null, "Tara Brown", "Pod 9", "1077"], ["Applied Computer Solutions", "Mike Kuhn", null, "Tara Brown", "Pod 9", "1039"], ["Carsplus", "Mike Kuhn", null, "Tara Brown", "Pod 9", "5005"], ["Dealer Center", "Mike Kuhn", null, "Tara Brown", "Pod 9", "2033"], ["Vergent", "Mike Kuhn", "Orlando Mosquera", "Tara Brown", "Pod 9", "1034, 9163"]];
+
+const PARTNER_OPTIONS = PARTNER_DIRECTORY.map(r => r[0]).concat(["None (Vterminal / public checkout)","NEW Partner"]);
+const PARTNER_LOOKUP = {};
+PARTNER_DIRECTORY.forEach(r => { PARTNER_LOOKUP[r[0]] = r; });
+
+/* ---------------- Populate selects ---------------- */
+function fillSelect(id, options){
+  const el = document.getElementById(id);
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o; opt.textContent = o;
+    el.appendChild(opt);
+  });
+}
+fillSelect('vertical', LISTS.vertical);
+fillSelect('pciLevel', LISTS.pciLevel);
+fillSelect('salesExec', LISTS.salesExecutive);
+fillSelect('csm', LISTS.csm);
+fillSelect('pod', LISTS.pod);
+fillSelect('instantFundingGateway', LISTS.instantFundingGateway);
+fillSelect('achSettlementWindow', LISTS.achSettlementWindow);
+fillSelect('applePayGooglePay', LISTS.applePayGooglePay);
+fillSelect('dashboardOptions', LISTS.dashboardOptions);
+fillSelect('terminalNeed', LISTS.terminalNeed);
+fillSelect('partner', PARTNER_OPTIONS);
+['commercialCard','paypal','venmo','activeSafe'].forEach(id => fillSelect(id, LISTS.yesNo));
+
+/* ---------------- Section stub nav ---------------- */
+const sections = Array.from(document.querySelectorAll('.section'));
+const stubList = document.getElementById('stubList');
+sections.forEach(sec => {
+  const num = sec.dataset.section;
+  const title = sec.querySelector('h2').textContent;
+  const item = document.createElement('div');
+  item.className = 'stub-item';
+  item.dataset.target = sec.id;
+  item.innerHTML = `<span class="stub-check"></span><span><span class="stub-num">SECTION ${num.padStart(2,'0')}</span><span class="stub-label">${title}</span></span>`;
+  item.addEventListener('click', () => sec.scrollIntoView({behavior:'smooth', block:'start'}));
+  stubList.appendChild(item);
+});
+const stubItems = Array.from(stubList.querySelectorAll('.stub-item'));
+
+function sectionHasContent(sec){
+  const inputs = sec.querySelectorAll('input, select, textarea');
+  for (const el of inputs){
+    if (el.type === 'checkbox') { if (el.checked) return true; }
+    else if (el.value && el.value.trim() !== '') return true;
+  }
+  return false;
+}
+
+function updateProgress(){
+  let doneCount = 0;
+  sections.forEach((sec, i) => {
+    const has = sectionHasContent(sec);
+    stubItems[i].classList.toggle('done', has);
+    if (has) doneCount++;
+  });
+  document.getElementById('progressText').textContent = `${doneCount} of ${sections.length} sections started`;
+  document.getElementById('progressFill').style.width = (doneCount / sections.length * 100) + '%';
+}
+
+/* highlight active section on scroll */
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const idx = sections.indexOf(entry.target);
+    if (entry.isIntersecting && idx !== -1){
+      stubItems.forEach(i => i.classList.remove('active'));
+      stubItems[idx].classList.add('active');
+    }
+  });
+}, {rootMargin: '-10% 0px -75% 0px'});
+sections.forEach(s => observer.observe(s));
+
+document.getElementById('intakeForm').addEventListener('input', updateProgress);
+document.getElementById('intakeForm').addEventListener('change', updateProgress);
+
+/* ---------------- Checkbox group auto-summary ---------------- */
+function wireGroup(groupName){
+  const group = document.querySelector(`[data-group="${groupName}"]`);
+  const summary = document.getElementById(`sum-${groupName}`);
+  const boxes = group.querySelectorAll('input[type=checkbox]');
+  function refresh(){
+    const selected = Array.from(boxes).filter(b => b.checked).map(b => b.value);
+    if (selected.length){
+      summary.textContent = selected.join('; ');
+      summary.classList.remove('empty');
+    } else {
+      summary.textContent = 'None selected';
+      summary.classList.add('empty');
+    }
+  }
+  boxes.forEach(b => b.addEventListener('change', refresh));
+  refresh();
+  return refresh;
+}
+['paymentPlatform','instantFunding','achDebit','nacha','cardProcessing','splitFee','processingFlags','ecash','products','controlledDeployment']
+  .forEach(wireGroup);
+
+/* ---------------- Conditional logic ---------------- */
+
+// Partner selection -> auto-fill + conditional fields
+const partnerSel = document.getElementById('partner');
+partnerSel.addEventListener('change', () => {
+  const val = partnerSel.value;
+  document.getElementById('wrap-newPartnerName').style.display = (val === 'NEW Partner') ? '' : 'none';
+  document.getElementById('wrap-pciLevel').style.display = (val === 'Proprietary') ? '' : 'none';
+
+  if (PARTNER_LOOKUP[val]){
+    const [ , se, csm, seMgr, pod, code ] = PARTNER_LOOKUP[val];
+    document.getElementById('partnerCode').value = code || '';
+    document.getElementById('seAuto').value = se || '';
+    document.getElementById('csmAuto').value = csm || '';
+    document.getElementById('seManagerAuto').value = seMgr || '';
+    document.getElementById('podAuto').value = pod || '';
+  } else if (val === 'None (Vterminal / public checkout)' || val === 'NEW Partner' || val === ''){
+    document.getElementById('partnerCode').value = (val === 'None (Vterminal / public checkout)') ? '' : '';
+    document.getElementById('seAuto').value = '';
+    document.getElementById('csmAuto').value = '';
+    document.getElementById('seManagerAuto').value = '';
+    document.getElementById('podAuto').value = '';
+  }
+  updateProgress();
+});
+
+// Terminal need -> terminal count
+const terminalNeed = document.getElementById('terminalNeed');
+const terminalCount = document.getElementById('terminalCount');
+terminalNeed.addEventListener('change', () => {
+  const enabled = terminalNeed.value !== '' && terminalNeed.value !== 'No';
+  terminalCount.disabled = !enabled;
+  if (!enabled) terminalCount.value = '';
+});
+
+// "keeps" fee unlock helper (matches any checkbox value containing "keeps")
+function wireKeepsFee(groupName, feeId){
+  const group = document.querySelector(`[data-group="${groupName}"]`);
+  const feeInput = document.getElementById(feeId);
+  const boxes = group.querySelectorAll('input[type=checkbox]');
+  function refresh(){
+    const anyKeeps = Array.from(boxes).some(b => b.checked && /keeps/i.test(b.value));
+    feeInput.disabled = !anyKeeps;
+    if (!anyKeeps) feeInput.value = '';
+  }
+  boxes.forEach(b => b.addEventListener('change', refresh));
+  refresh();
+}
+
+// Fee unlock helper that only triggers on a specific checkbox value (exact match)
+function wireSpecificKeepsFee(groupName, feeId, matchValue){
+  const group = document.querySelector(`[data-group="${groupName}"]`);
+  const feeInput = document.getElementById(feeId);
+  const boxes = group.querySelectorAll('input[type=checkbox]');
+  function refresh(){
+    const matched = Array.from(boxes).some(b => b.checked && b.value === matchValue);
+    feeInput.disabled = !matched;
+    if (!matched) feeInput.value = '';
+  }
+  boxes.forEach(b => b.addEventListener('change', refresh));
+  refresh();
+}
+wireSpecificKeepsFee('achDebit', 'achFee', 'Merchant keeps (Merchant Absorb)');
+wireKeepsFee('cardProcessing', 'cardFee');
+wireKeepsFee('splitFee', 'splitFeeAmount');
+
+// Yes/No -> fee unlock helper
+function wireYesFee(selectId, feeId){
+  const sel = document.getElementById(selectId);
+  const fee = document.getElementById(feeId);
+  sel.addEventListener('change', () => {
+    const enabled = sel.value === 'Yes';
+    fee.disabled = !enabled;
+    if (!enabled) fee.value = '';
+  });
+}
+wireYesFee('paypal', 'paypalFee');
+wireYesFee('venmo', 'venmoFee');
+
+/* ---------------- Data collection / export ---------------- */
+function collectData(){
+  const data = {};
+  document.querySelectorAll('#intakeForm input, #intakeForm select, #intakeForm textarea').forEach(el => {
+    if (!el.id) return;
+    if (el.type === 'checkbox') return; // handled via groups
+    data[el.id] = el.value;
+  });
+  ['paymentPlatform','instantFunding','achDebit','nacha','cardProcessing','splitFee','processingFlags','ecash','products','controlledDeployment']
+    .forEach(g => {
+      const boxes = document.querySelectorAll(`[data-group="${g}"] input[type=checkbox]`);
+      data[g] = Array.from(boxes).filter(b => b.checked).map(b => b.value);
+    });
+  return data;
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+document.getElementById('btnJson').addEventListener('click', () => {
+  const data = collectData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const clientName = (data.clientName || 'client-build-intake').replace(/[^a-z0-9\-_]+/gi,'_');
+  a.href = url; a.download = `${clientName}_intake.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('JSON downloaded');
+});
+
+document.getElementById('btnPrint').addEventListener('click', () => window.print());
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  if (!confirm('Clear every field on this form? This cannot be undone.')) return;
+  document.getElementById('intakeForm').reset();
+  document.querySelectorAll('.summary-line').forEach(s => { s.textContent = 'None selected'; s.classList.add('empty'); });
+  document.querySelectorAll('input[readonly]').forEach(i => i.value = '');
+  document.getElementById('wrap-newPartnerName').style.display = 'none';
+  document.getElementById('wrap-pciLevel').style.display = 'none';
+  terminalCount.disabled = true;
+  document.getElementById('achFee').disabled = true;
+  document.getElementById('cardFee').disabled = true;
+  document.getElementById('splitFeeAmount').disabled = true;
+  document.getElementById('paypalFee').disabled = true;
+  document.getElementById('venmoFee').disabled = true;
+  updateProgress();
+  showToast('Form cleared');
+});
+
+function buildSummaryText(){
+  const d = collectData();
+  const lines = [];
+  lines.push('SALES ENGINEERING — IMPLEMENTATION BUILD SUMMARY');
+  lines.push('='.repeat(50));
+  lines.push('');
+  lines.push('CLIENT INFORMATION');
+  lines.push(`  Client Name:        ${d.clientName || '—'}`);
+  lines.push(`  Vertical:           ${d.vertical || '—'}`);
+  lines.push(`  Client Contact:     ${d.clientContact || '—'}`);
+  lines.push(`  Phone / Email:      ${d.clientPhone || '—'}  /  ${d.clientEmail || '—'}`);
+  lines.push(`  Desired Go-Live:    ${d.goLiveDate || '—'}`);
+  lines.push(`  Sales Executive:    ${d.salesExec || '—'}`);
+  lines.push(`  CSM / Pod:          ${d.csm || '—'}  /  ${d.pod || '—'}`);
+  lines.push(`  SE(s) on demos:     ${d.seOnCall || '—'}`);
+  lines.push('');
+  lines.push('PARTNER & CORE SYSTEM');
+  lines.push(`  Partner/Core:       ${d.partner || '—'}${d.partner==='NEW Partner' && d.newPartnerName ? ' — ' + d.newPartnerName : ''}`);
+  lines.push(`  Partner Code:       ${d.partnerCode || '—'}`);
+  lines.push(`  PCI Level:          ${d.pciLevel || '—'}`);
+  lines.push(`  Auto SE/CSM/Mgr/Pod:${[d.seAuto,d.csmAuto,d.seManagerAuto,d.podAuto].filter(Boolean).join(' / ') || ' —'}`);
+  lines.push('');
+  lines.push('MAIN PAYMENT PLATFORM');
+  lines.push(`  Platforms:          ${(d.paymentPlatform||[]).join('; ') || '—'}`);
+  lines.push(`  Locations:          ${d.numLocations || '—'}`);
+  lines.push('');
+  lines.push('TERMINALS');
+  lines.push(`  Needed:             ${d.terminalNeed || '—'}`);
+  lines.push(`  Count:              ${d.terminalCount || '—'}`);
+  lines.push('');
+  lines.push('INSTANT FUNDING');
+  lines.push(`  Options:            ${(d.instantFunding||[]).join('; ') || '—'}`);
+  lines.push(`  Gateway:            ${d.instantFundingGateway || '—'}`);
+  lines.push('');
+  lines.push('ACH DEBIT PROCESSING');
+  lines.push(`  Fee model:          ${(d.achDebit||[]).join('; ') || '—'}`);
+  lines.push(`  Fee amount:         ${d.achFee || '—'}`);
+  lines.push(`  Batch time:         ${d.achBatchTime || '—'}   Window: ${d.achSettlementWindow || '—'}`);
+  lines.push(`  NACHA compliance:   ${(d.nacha||[]).join('; ') || '—'}`);
+  lines.push('');
+  lines.push('CARD PAYMENT SERVICES');
+  lines.push(`  Card processing:    ${(d.cardProcessing||[]).join('; ') || '—'}`);
+  lines.push(`  Card fee amount:    ${d.cardFee ? '$'+d.cardFee : '—'}`);
+  lines.push(`  Split fee:          ${(d.splitFee||[]).join('; ') || '—'}`);
+  lines.push(`  Split fee amount:   ${d.splitFeeAmount ? '$'+d.splitFeeAmount : '—'}`);
+  lines.push(`  Apple/Google Pay:   ${d.applePayGooglePay || '—'}`);
+  lines.push(`  Batch time (card):  ${d.cardBatchTime || '—'}`);
+  lines.push(`  Processing flags:   ${(d.processingFlags||[]).join('; ') || '—'}`);
+  lines.push(`  Commercial Card:    ${d.commercialCard || '—'}`);
+  lines.push(`  MID(s) summary:     ${d.midSummary || '—'}`);
+  lines.push('');
+  lines.push('OTHER PAYMENT SERVICES');
+  lines.push(`  PayPal:             ${d.paypal || '—'}  (${d.paypalFee ? '$'+d.paypalFee : '—'})`);
+  lines.push(`  Venmo:              ${d.venmo || '—'}  (${d.venmoFee ? '$'+d.venmoFee : '—'})`);
+  lines.push(`  eCash:              ${(d.ecash||[]).join('; ') || '—'}`);
+  lines.push(`  Active Safe:        ${d.activeSafe || '—'}`);
+  lines.push('');
+  lines.push('REQUESTED TECHNOLOGY & CHANNELS');
+  lines.push(`  Products:           ${(d.products||[]).join('; ') || '—'}`);
+  lines.push(`  Controlled deploy:  ${(d.controlledDeployment||[]).join('; ') || '—'}`);
+  lines.push(`  Dashboard options:  ${d.dashboardOptions || '—'}`);
+  lines.push('');
+  lines.push('SE NOTES');
+  lines.push(`  ${d.seNotes ? d.seNotes.replace(/\n/g,'\n  ') : '—'}`);
+  return lines.join('\n');
+}
+
+document.getElementById('btnSubmitEmail').addEventListener('click', () => {
+  const data = collectData();
+  const clientName = data.clientName ? data.clientName.trim() : '';
+  const subject = `Implementation Intake — ${clientName || 'New Client Build'}`;
+  const body = buildSummaryText();
+  const mailto = `mailto:sbell@repay.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  // Most email clients truncate mailto bodies somewhere around 1,800–2,000 characters.
+  // Warn and fall back to a JSON download (to attach manually) if the summary is long.
+  if (body.length > 1800){
+    alert('This form is long enough that some email clients may cut off part of the message body. Your email app will open with as much as it can fit — for a complete record, also click "Download as JSON" and attach that file to the email before sending.');
+  }
+  window.location.href = mailto;
+  showToast('Opening your email app…');
+});
+
+document.getElementById('btnSummary').addEventListener('click', () => {
+  document.getElementById('summaryText').textContent = buildSummaryText();
+  document.getElementById('summaryModal').classList.add('show');
+});
+document.getElementById('closeSummary').addEventListener('click', () => {
+  document.getElementById('summaryModal').classList.remove('show');
+});
+document.getElementById('summaryModal').addEventListener('click', (e) => {
+  if (e.target.id === 'summaryModal') document.getElementById('summaryModal').classList.remove('show');
+});
+
+updateProgress();
+</script>
+</body>
+</html>
